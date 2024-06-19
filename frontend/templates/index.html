@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticky Notes!</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marker+Felt&display=swap">
+    <style>
+        /* Global Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Body Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #000000;
+            color: #e5ff00;
+            display: flex;
+            padding: 20px;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 200px;
+            background-color: #e5ff00;
+            color: #000000;
+            padding: 20px;
+            border-radius: 8px;
+            margin-right: 20px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 20px;
+            font-size: 20px;
+            border-bottom: 2px solid #e5ff00;
+            padding-bottom: 10px;
+        }
+
+        .sidebar a {
+            color: #000000;
+            text-decoration: none;
+            display: block;
+            margin: 10px 0;
+            transition: color 0.3s ease;
+        }
+
+        .sidebar a:hover {
+            color: #e5ff00;
+        }
+
+        /* Container Styles */
+        .container {
+            flex: 1;
+        }
+
+        .header {
+            font-size: 36px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000000;
+        }
+
+        /* Note Creator Container */
+        #note-creator-container {
+            background-color: #e5ff00;
+            border: 1px solid #e5ff00;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        #note-creator-container .hidden {
+            display: none;
+        }
+
+        /* Notes Container */
+        #notes-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* Note Styles */
+        .note {
+            background-color: #e5ff00;
+            border: 1px solid #000000;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .note:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .note-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .note-text {
+            width: 100%;
+            height: 80px;
+            resize: vertical;
+            margin-bottom: 10px;
+            border: none; /* Remove border to make it look like written on a wall -  */
+            background-color: transparent; /* Transparent background */
+            font-family: 'Marker Felt', sans-serif; /*Marker Felt font for handwriting effect */
+            font-size: 18px; 
+            line-height: 1.5; 
+            padding: 10px;
+            outline: none;
+            cursor: default;
+            pointer-events: none; 
+        }
+
+        .note-text.editable {
+            pointer-events: auto; /* Enable pointer events in edit mode */
+        }
+
+        .note img,
+        .note canvas {
+            max-width: 100%;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .save-button,
+        .delete-button {
+            padding: 8px 16px;
+            margin-top: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #000000;
+            color: #e5ff00;
+            transition: background-color 0.3s ease;
+        }
+
+        .save-button:hover,
+        .delete-button:hover {
+            background-color: #e5ff00;
+            color: #000000;
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 768px) {
+            #notes-container {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            }
+        }
+
+        @media screen and (max-width: 576px) {
+            #notes-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Notes</h2>
+        <a href="#">Notes</a>
+        <a href="#">Reminders</a>
+        <a href="#">Edit Labels</a>
+        <a href="#">Archive</a>
+        <a href="#">Trash</a>
+    </div>
+
+    <div class="container">
+        <h1 class="header">Sticky Notes!</h1>
+
+        <div id="note-creator-container">
+            <textarea id="new-note-text" class="note-text editable" placeholder="Enter your note"></textarea>
+            <button id="toggle-draw-button" class="save-button">Draw</button>
+            <button id="toggle-upload-button" class="save-button">Upload Image</button>
+            <input type="file" id="image-input" class="hidden" accept="image/*">
+            <canvas id="draw-canvas" class="hidden" width="300" height="200" style="border:1px solid #cccccc; border-radius: 5px;"></canvas>
+            <button id="create-note-button" class="save-button">Create Note</button>
+        </div>
+
+        <div id="notes-container">
+            <!-- Sticky notes will be here -->
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const notesContainer = document.getElementById("notes-container");
+        const createNoteButton = document.getElementById("create-note-button");
+        const newNoteText = document.getElementById("new-note-text");
+        const imageInput = document.getElementById("image-input");
+        const drawCanvas = document.getElementById("draw-canvas");
+        const toggleDrawButton = document.getElementById("toggle-draw-button");
+        const toggleUploadButton = document.getElementById("toggle-upload-button");
+        const ctx = drawCanvas.getContext("2d");
+
+        let isDrawing = false;
+
+        toggleDrawButton.addEventListener("click", () => {
+            drawCanvas.classList.toggle("hidden");
+        });
+
+        toggleUploadButton.addEventListener("click", () => {
+            imageInput.click(); // File input trigger
+        });
+
+        imageInput.addEventListener("change", function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.classList.add("note-image");
+
+                    // Clear previous image if exists
+                    const prevImage = document.querySelector(".note-image");
+                    if (prevImage) {
+                        prevImage.remove();
+                    }
+
+                    // Append new image and handle resizing
+                    const noteCreatorContainer = document.getElementById("note-creator-container");
+                    noteCreatorContainer.appendChild(img);
+
+                    // Resize image to fit container 
+                    img.onload = function() {
+                        const maxWidth = noteCreatorContainer.offsetWidth - 30; // Adjusted for padding
+                        const maxHeight = 200; 
+                        const width = this.width;
+                        const height = this.height;
+
+                        if (width > maxWidth || height > maxHeight) {
+                            if (width / height > maxWidth / maxHeight) {
+                                this.width = maxWidth;
+                                this.height = Math.round(maxWidth * (height / width));
+                            } else {
+                                this.height = maxHeight;
+                                this.width = Math.round(maxHeight * (width / height));
+                            }
+                        }
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        drawCanvas.addEventListener("mousedown", () => {
+            isDrawing = true;
+            ctx.beginPath();
+        });
+
+        drawCanvas.addEventListener("mouseup", () => {
+            isDrawing = false;
+        });
+
+        drawCanvas.addEventListener("mousemove", (e) => {
+            if (isDrawing) {
+                ctx.lineWidth = 2;
+                ctx.lineCap = "round";
+                ctx.strokeStyle = "#333";
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(e.offsetX, e.offsetY);
+            }
+        });
+
+        // Function to create a new note
+        function createNote() {
+            const noteDiv = document.createElement("div");
+            noteDiv.classList.add("note");
+
+            const textarea = document.createElement("textarea");
+            textarea.classList.add("note-text", "editable");
+            textarea.value = newNoteText.value;
+            textarea.placeholder = "Enter your note";
+
+            const editButton = document.createElement("button");
+            editButton.classList.add("save-button", "edit-button");
+            editButton.textContent = "Edit";
+            editButton.addEventListener("click", toggleEditMode);
+
+            const saveButton = document.createElement("button");
+            saveButton.classList.add("save-button", "hidden");
+            saveButton.textContent = "Save Note";
+            saveButton.addEventListener("click", saveNote);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.classList.add("delete-button");
+            deleteButton.textContent = "Delete";
+            deleteButton.addEventListener("click", deleteNote);
+
+            noteDiv.appendChild(textarea);
+            noteDiv.appendChild(editButton);
+            noteDiv.appendChild(saveButton);
+            noteDiv.appendChild(deleteButton);
+
+            // Display the drawn image (if any)
+            if (!drawCanvas.classList.contains("hidden")) {
+                const canvasImage = new Image();
+                canvasImage.src = drawCanvas.toDataURL(); // Convert canvas to image URL
+                canvasImage.classList.add("note-image");
+                noteDiv.appendChild(canvasImage);
+
+                // Clear draw canvas
+                ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            }
+
+            // Display the uploaded image (if any)
+            const uploadedImage = document.querySelector(".note-image");
+            if (uploadedImage) {
+                noteDiv.appendChild(uploadedImage.cloneNode(true));
+
+                // Remove uploaded image from creator container
+                uploadedImage.remove();
+            }
+
+            // Append note to notes container
+            notesContainer.appendChild(noteDiv);
+
+            // Clear the textarea
+            newNoteText.value = "";
+
+            // Focus on new note
+            noteDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        
+        function saveNote() {
+            const noteDiv = this.parentElement;
+            const textarea = noteDiv.querySelector(".note-text");
+
+            // Toggle back to view mode
+            textarea.classList.toggle("hidden");
+
+            // Provide feedback
+            const editButton = noteDiv.querySelector(".edit-button");
+            editButton.textContent = "Edit";
+
+            // Perform save operation
+            const noteText = textarea.value;
+            console.log("Note saved:", noteText);
+        }
+
+        // Delete a note
+        function deleteNote() {
+            const noteDiv = this.parentElement;
+            noteDiv.remove();
+        }
+
+        // Toggle Edit Mode
+        function toggleEditMode() {
+            const noteDiv = this.parentElement;
+            const textarea = noteDiv.querySelector(".note-text");
+            const editButton = noteDiv.querySelector(".edit-button");
+
+            // Toggle the visibility of textarea and buttons
+            textarea.classList.toggle("hidden");
+            editButton.classList.toggle("hidden");
+            const saveButton = noteDiv.querySelector(".save-button");
+            saveButton.classList.toggle("hidden");
+
+            if (!textarea.classList.contains("hidden")) {
+                // Focus on textarea and enable editing
+                textarea.focus();
+                editButton.textContent = "Cancel"; // Change text to "Cancel"
+            } else {
+                // Toggle back to view mode
+                editButton.textContent = "Edit";
+            }
+        }
+
+        // Event listener for creating a new note
+        createNoteButton.addEventListener("click", createNote);
+
+    });
+    </script>
+</body>
+</html>
